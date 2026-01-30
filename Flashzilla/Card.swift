@@ -6,10 +6,17 @@
 //
 
 import Foundation
+import SwiftData
 
-struct Card: Codable {
+@Model
+class Card {
     var prompt: String
     var answer: String
+    
+    init(prompt: String, answer: String) {
+        self.prompt = prompt
+        self.answer = answer
+    }
     
     static let example = Card(prompt: "谁是世界上最伟大的拳击运动员？", answer: "穆罕默德·阿里·什哈比")
 }

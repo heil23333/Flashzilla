@@ -6,11 +6,13 @@
 //
 
 import SwiftUI
+import SwiftData
 
 struct EditCards: View {
     @Environment(\.dismiss) var dismiss
+    @Environment(\.modelContext) var modelContext
     
-    @State private var cards = [Card]()
+    @Query private var cards: [Card]
     @State private var newPrompt: String = ""
     @State private var newAnswer: String = ""
     
@@ -26,12 +28,12 @@ struct EditCards: View {
                 }
                 
                 Section {
-                    ForEach(0..<cards.count, id: \.self) { index in
+                    ForEach(cards) { card in
                         VStack (alignment: .leading) {
-                            Text(cards[index].prompt)
+                            Text(card.prompt)
                                 .font(.headline)
                             
-                            Text(cards[index].answer)
+                            Text(card.answer)
                                 .foregroundStyle(.secondary)
                         }
                     }
@@ -43,25 +45,10 @@ struct EditCards: View {
                 Button("完成", action: done)
             }
         }
-        .onAppear(perform: loadData)
     }
     
     func done() {
         dismiss()
-    }
-    
-    func loadData() {
-        if let data = UserDefaults.standard.data(forKey: "Cards") {
-            if let decoded = try? JSONDecoder().decode([Card].self, from: data) {
-                cards = decoded
-            }
-        }
-    }
-    
-    func saveData() {
-        if let data = try? JSONEncoder().encode(cards) {
-            UserDefaults.standard.set(data, forKey: "Cards")
-        }
     }
     
     func addCard() {
@@ -73,16 +60,16 @@ struct EditCards: View {
         }
         
         let newCard = Card(prompt: trimmedPrompt, answer: trimmedAnswer)
-        cards.insert(newCard, at: 0)
-        saveData()
+        modelContext.insert(newCard)
         
         newPrompt = ""
         newAnswer = ""
     }
     
     func removeCard(at offsets: IndexSet) {
-        cards.remove(atOffsets: offsets)
-        saveData()
+        for index in offsets {
+            modelContext.delete(cards[index])
+        }
     }
 }
 

@@ -6,10 +6,12 @@
 //
 
 import SwiftUI
-internal import Combine
+import Combine
+import SwiftData
 
 struct ContentView: View {
-    @State private var cards = [Card]()
+    @Query var cards: [Card]
+    @State private var removedCardIDs: Set<Card.ID> = []
     @State private var timeRemaining = 100
     @State private var isActive = true
     @State private var showingEditScreen = false
@@ -19,6 +21,9 @@ struct ContentView: View {
     @Environment(\.accessibilityVoiceOverEnabled) var accessibilityVoiceOverEnabled
     
     let timer = Timer.publish(every: 1, on: .main, in: .common).autoconnect()
+    var activeCards: [Card] {
+        cards.filter { !removedCardIDs.contains($0.id) }
+    }
     
     var body: some View {
         ZStack {
@@ -36,20 +41,20 @@ struct ContentView: View {
                     .clipShape(.capsule)
                 
                 ZStack {
-                    ForEach(0..<cards.count, id: \.self) { index in
-                        CardView(card: cards[index]) {
+                    ForEach(0..<activeCards.count, id: \.self) { index in
+                        CardView(card: activeCards[index]) {
                             withAnimation {
                                 removeCard(at: index)
                             }
                         }
-                            .stacked(at: index, in: cards.count)
-                            .allowsHitTesting(index == cards.count - 1)//只允许最后一张(也就是界面的第一张)交互
-                            .accessibilityHidden(index < cards.count - 1)//界面的第一张以下对辅助功能隐藏
+                            .stacked(at: index, in: activeCards.count)
+                            .allowsHitTesting(index == activeCards.count - 1)//只允许最后一张(也就是界面的第一张)交互
+                            .accessibilityHidden(index < activeCards.count - 1)//界面的第一张以下对辅助功能隐藏
                     }
                 }
                 .allowsHitTesting(timeRemaining > 0)//时间到后禁止交互
                 
-                if cards.isEmpty {
+                if activeCards.isEmpty {
                     Button("再来一局", action: resetCards)
                         .padding()
                         .background(.white)
@@ -85,7 +90,7 @@ struct ContentView: View {
                     HStack {
                         Button {
                             withAnimation {
-                                removeCard(at: cards.count - 1)//移除最上面
+                                removeCard(at: activeCards.count - 1)//移除最上面
                             }
                         } label: {
                             Image(systemName: "xmark.circle")
@@ -100,7 +105,7 @@ struct ContentView: View {
                         
                         Button {
                             withAnimation {
-                                removeCard(at: cards.count - 1)//移除最上面
+                                removeCard(at: activeCards.count - 1)//移除最上面
                             }
                         } label: {
                             Image(systemName: "checkmark.circle")
@@ -120,7 +125,7 @@ struct ContentView: View {
         .onReceive(timer) { _ in
             guard isActive else { return }//非激活状态暂停
             
-            guard cards.count > 0 else {
+            guard activeCards.count > 0 else {
                 return
             }
             
@@ -129,7 +134,7 @@ struct ContentView: View {
             }
         }
         .onChange(of: scenePhase) { oldValue, newValue in
-            if newValue == .active && cards.isEmpty == false {
+            if newValue == .active && activeCards.isEmpty == false {
                 isActive = true
             } else {
                 isActive = false
@@ -141,25 +146,18 @@ struct ContentView: View {
         .onAppear(perform: resetCards)
     }
     
-    func loadData() {
-        if let data = UserDefaults.standard.data(forKey: "Cards") {
-            if let decoded = try? JSONDecoder().decode([Card].self, from: data) {
-                cards = decoded
-            }
-        }
-    }
-    
     func removeCard(at index: Int) {
         guard index >= 0 else { return }//没有卡片时直接返回
         
-        cards.remove(at: index)
-        if cards.isEmpty {
+        removedCardIDs.insert(activeCards[index].id)
+        
+        if activeCards.isEmpty {
             isActive = false
         }
     }
     
     func resetCards() {
-        loadData()
+        removedCardIDs.removeAll()
         timeRemaining = 100
         isActive = true
     }
