@@ -7,6 +7,11 @@
 
 import SwiftUI
 
+enum DryDirection {
+    case left
+    case right
+}
+
 struct CardView: View {
     @Environment(\.accessibilityDifferentiateWithoutColor) var accessbilityDifferentiateWithoutColor
     @Environment(\.accessibilityVoiceOverEnabled) var accessibilityVoiceOverEnabled
@@ -16,6 +21,7 @@ struct CardView: View {
     
     @State private var isShowingAnswer = false
     @State private var offset = CGSize.zero
+    @State private var dryDirection: DryDirection? = nil
     
     var body: some View {
         ZStack {
@@ -31,7 +37,7 @@ struct CardView: View {
                     accessbilityDifferentiateWithoutColor
                     ? nil
                     : RoundedRectangle(cornerRadius: 25)
-                        .fill(offset.width > 0 ? .green : .red)
+                        .fill(dryDirection == .right ? .green : .red)
                 )
                 .shadow(radius: 10)
                 
@@ -65,6 +71,11 @@ struct CardView: View {
             DragGesture()
                 .onChanged({ value in
                     self.offset = value.translation
+                    if value.translation.width > 0 {
+                        dryDirection = .right
+                    } else {
+                        dryDirection = .left
+                    }
                 })
                 .onEnded({ _ in
                     if abs(offset.width) > 100 {
