@@ -9,9 +9,10 @@ import SwiftUI
 internal import Combine
 
 struct ContentView: View {
-    @State private var cards = Array<Card>(repeating: .example, count: 10)
+    @State private var cards = [Card]()
     @State private var timeRemaining = 100
     @State private var isActive = true
+    @State private var showingEditScreen = false
     
     @Environment(\.accessibilityDifferentiateWithoutColor) var accessibilityDifferentiateWithoutColor
     @Environment(\.scenePhase) var scenePhase
@@ -49,13 +50,33 @@ struct ContentView: View {
                 .allowsHitTesting(timeRemaining > 0)//时间到后禁止交互
                 
                 if cards.isEmpty {
-                    Button("再来一局", action: resetCard)
+                    Button("再来一局", action: resetCards)
                         .padding()
                         .background(.white)
                         .foregroundStyle(.black)
                         .clipShape(.capsule)
                 }
             }
+            
+            VStack {
+                HStack {
+                    Spacer()
+                    
+                    Button {
+                        showingEditScreen = true
+                    } label: {
+                        Image(systemName: "plus.circle")
+                            .padding()
+                            .background(.black.opacity(0.7))
+                            .clipShape(.circle)
+                    }
+                }
+                
+                Spacer()
+            }
+            .foregroundStyle(.white)
+            .font(.largeTitle)
+            .padding()
             
             if accessibilityDifferentiateWithoutColor || accessibilityVoiceOverEnabled {//不以颜色区分和无障碍启用
                 VStack {
@@ -99,6 +120,10 @@ struct ContentView: View {
         .onReceive(timer) { _ in
             guard isActive else { return }//非激活状态暂停
             
+            guard cards.count > 0 else {
+                return
+            }
+            
             if timeRemaining > 0 {
                 timeRemaining -= 1
             }
@@ -108,6 +133,18 @@ struct ContentView: View {
                 isActive = true
             } else {
                 isActive = false
+            }
+        }
+        .sheet(isPresented: $showingEditScreen, onDismiss: resetCards) {
+            EditCards()
+        }
+        .onAppear(perform: resetCards)
+    }
+    
+    func loadData() {
+        if let data = UserDefaults.standard.data(forKey: "Cards") {
+            if let decoded = try? JSONDecoder().decode([Card].self, from: data) {
+                cards = decoded
             }
         }
     }
@@ -121,8 +158,8 @@ struct ContentView: View {
         }
     }
     
-    func resetCard() {
-        cards = Array<Card>(repeating: .example, count: 10)
+    func resetCards() {
+        loadData()
         timeRemaining = 100
         isActive = true
     }
